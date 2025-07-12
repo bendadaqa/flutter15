@@ -32,6 +32,51 @@ class PeriodicQuizApp extends StatelessWidget {
   }
 }
 
+// Animation helper and transition types
+enum TransitionType { fade, slideFromRight, slideFromBottom, scale }
+
+void animatedNavigation(BuildContext context, Widget target,
+    {bool replace = false, TransitionType type = TransitionType.fade}) {
+  PageRouteBuilder routeBuilder = PageRouteBuilder(
+    pageBuilder: (context, animation, secondaryAnimation) => target,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      switch (type) {
+        case TransitionType.slideFromRight:
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero)
+                .animate(animation),
+            child: child,
+          );
+        case TransitionType.slideFromBottom:
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0.0, 1.0), end: Offset.zero)
+                .animate(animation),
+            child: child,
+          );
+        case TransitionType.scale:
+          return ScaleTransition(
+            scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                CurvedAnimation(parent: animation, curve: Curves.fastOutSlowIn)),
+            child: child,
+          );
+        case TransitionType.fade:
+        default:
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+      }
+    },
+    transitionDuration: const Duration(milliseconds: 500),
+  );
+
+  if (replace) {
+    Navigator.pushReplacement(context, routeBuilder);
+  } else {
+    Navigator.push(context, routeBuilder);
+  }
+}
+
 class ElementData {
   final int atomicNumber;
   final String symbol;
@@ -161,6 +206,8 @@ final List<ElementData> elements = [
   ElementData(118, "Og", "Oganesson"),
 ];
 
+enum Difficulty { easy, medium, hard }
+
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
 
@@ -181,29 +228,74 @@ class MenuScreen extends StatelessWidget {
                   style: Theme.of(context).textTheme.headlineLarge,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 30),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Start Quiz', style: TextStyle(fontSize: 20)),
-                  style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30))),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const QuizScreen()),
-                    );
-                  },
+                const SizedBox(height: 40),
+                const Text(
+                  'Select Difficulty Level:',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
+
+                // التعديل هنا: أزرار الصعوبة في صف واحد
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => QuizScreen(difficulty: Difficulty.easy),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      ),
+                      child: const Text('Easy', style: TextStyle(fontSize: 20)),
+                    ),
+                    const SizedBox(width: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => QuizScreen(difficulty: Difficulty.medium),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      ),
+                      child: const Text('Medium', style: TextStyle(fontSize: 20)),
+                    ),
+                    const SizedBox(width: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => QuizScreen(difficulty: Difficulty.hard),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      ),
+                      child: const Text('Hard', style: TextStyle(fontSize: 20)),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 40),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.table_chart),
                   label: const Text('View Periodic Table', style: TextStyle(fontSize: 20)),
                   style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30))),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -217,8 +309,7 @@ class MenuScreen extends StatelessWidget {
                   label: const Text('About', style: TextStyle(fontSize: 20)),
                   style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30))),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
                   onPressed: () {
                     showAboutDialog(
                       context: context,
@@ -243,15 +334,30 @@ class MenuScreen extends StatelessWidget {
   }
 }
 
+enum QuestionType {
+  atomicNumberToName,
+  atomicNumberToSymbol,
+  symbolToName,
+  nameToSymbol,
+  symbolToAtomicNumber,
+  nameToAtomicNumber,
+}
+
 class QuizScreen extends StatefulWidget {
-  const QuizScreen({super.key});
+  final Difficulty difficulty;
+
+  const QuizScreen({super.key, required this.difficulty});
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
 }
 
 class _QuizScreenState extends State<QuizScreen> {
-  final int totalQuestions = 10;
+  late int totalQuestions;
+  late int secondsPerQuestion;
+  late int optionsCount;
+  late List<QuestionType> availableQuestionTypes;
+
   int currentQuestionIndex = 0;
   int score = 0;
   late ElementData currentElement;
@@ -259,15 +365,53 @@ class _QuizScreenState extends State<QuizScreen> {
   bool answered = false;
   bool correctAnswerSelected = false;
   Timer? timer;
-  int secondsLeft = 15;
+  int secondsLeft = 0;
 
   final Random _random = Random();
   final AudioPlayer _audioPlayer = AudioPlayer();
 
+  late QuestionType currentQuestionType;
+  QuestionType? previousQuestionType;
+
   @override
   void initState() {
     super.initState();
+    _setupDifficultySettings();
     _loadNewQuestion();
+  }
+
+  void _setupDifficultySettings() {
+    switch (widget.difficulty) {
+      case Difficulty.easy:
+        totalQuestions = 5;
+        secondsPerQuestion = 20;
+        optionsCount = 3;
+        availableQuestionTypes = [
+          QuestionType.atomicNumberToName,
+          QuestionType.symbolToName,
+          QuestionType.nameToSymbol,
+        ];
+        break;
+      case Difficulty.medium:
+        totalQuestions = 10;
+        secondsPerQuestion = 15;
+        optionsCount = 4;
+        availableQuestionTypes = QuestionType.values.toList();
+        break;
+      case Difficulty.hard:
+        totalQuestions = 15;
+        secondsPerQuestion = 10;
+        optionsCount = 4;
+        availableQuestionTypes = [
+          QuestionType.atomicNumberToSymbol,
+          QuestionType.symbolToAtomicNumber,
+          QuestionType.nameToAtomicNumber,
+          QuestionType.nameToSymbol,
+          QuestionType.symbolToName,
+        ];
+        break;
+    }
+    secondsLeft = secondsPerQuestion;
   }
 
   void _playCorrectSound() {
@@ -286,10 +430,19 @@ class _QuizScreenState extends State<QuizScreen> {
 
     answered = false;
     correctAnswerSelected = false;
-    secondsLeft = 15;
+    secondsLeft = secondsPerQuestion;
 
     currentElement = elements[_random.nextInt(elements.length)];
-    options = _generateOptions(currentElement);
+
+    // اختيار نوع سؤال جديد يختلف عن السابق ضمن الأنواع المسموحة بالمستوى
+    QuestionType newType;
+    do {
+      newType = availableQuestionTypes[_random.nextInt(availableQuestionTypes.length)];
+    } while (newType == previousQuestionType);
+    previousQuestionType = newType;
+    currentQuestionType = newType;
+
+    options = _generateOptions(currentElement, currentQuestionType);
 
     setState(() {});
 
@@ -297,7 +450,7 @@ class _QuizScreenState extends State<QuizScreen> {
     timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (secondsLeft == 0) {
         timer.cancel();
-        _handleAnswer(null); // time over
+        _handleAnswer(null); // الوقت انتهى بدون اختيار
       } else {
         setState(() {
           secondsLeft--;
@@ -306,12 +459,47 @@ class _QuizScreenState extends State<QuizScreen> {
     });
   }
 
-  List<String> _generateOptions(ElementData correct) {
-    Set<String> optionSet = {correct.name};
-    while (optionSet.length < 4) {
-      ElementData e = elements[_random.nextInt(elements.length)];
-      optionSet.add(e.name);
+  List<String> _generateOptions(ElementData correct, QuestionType qType) {
+    Set<String> optionSet = {};
+
+    String correctAnswer;
+    switch (qType) {
+      case QuestionType.atomicNumberToName:
+      case QuestionType.symbolToName:
+        correctAnswer = correct.name;
+        break;
+      case QuestionType.atomicNumberToSymbol:
+      case QuestionType.nameToSymbol:
+        correctAnswer = correct.symbol;
+        break;
+      case QuestionType.symbolToAtomicNumber:
+      case QuestionType.nameToAtomicNumber:
+        correctAnswer = correct.atomicNumber.toString();
+        break;
     }
+
+    optionSet.add(correctAnswer);
+
+    while (optionSet.length < optionsCount) {
+      ElementData e = elements[_random.nextInt(elements.length)];
+      String option;
+      switch (qType) {
+        case QuestionType.atomicNumberToName:
+        case QuestionType.symbolToName:
+          option = e.name;
+          break;
+        case QuestionType.atomicNumberToSymbol:
+        case QuestionType.nameToSymbol:
+          option = e.symbol;
+          break;
+        case QuestionType.symbolToAtomicNumber:
+        case QuestionType.nameToAtomicNumber:
+          option = e.atomicNumber.toString();
+          break;
+      }
+      optionSet.add(option);
+    }
+
     List<String> opts = optionSet.toList();
     opts.shuffle();
     return opts;
@@ -323,7 +511,23 @@ class _QuizScreenState extends State<QuizScreen> {
     answered = true;
     timer?.cancel();
 
-    if (selected != null && selected == currentElement.name) {
+    String correctAnswer;
+    switch (currentQuestionType) {
+      case QuestionType.atomicNumberToName:
+      case QuestionType.symbolToName:
+        correctAnswer = currentElement.name;
+        break;
+      case QuestionType.atomicNumberToSymbol:
+      case QuestionType.nameToSymbol:
+        correctAnswer = currentElement.symbol;
+        break;
+      case QuestionType.symbolToAtomicNumber:
+      case QuestionType.nameToAtomicNumber:
+        correctAnswer = currentElement.atomicNumber.toString();
+        break;
+    }
+
+    if (selected != null && selected == correctAnswer) {
       score++;
       correctAnswerSelected = true;
       _playCorrectSound();
@@ -334,7 +538,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
     setState(() {});
 
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 3), () {
       currentQuestionIndex++;
       if (currentQuestionIndex < totalQuestions) {
         _loadNewQuestion();
@@ -361,18 +565,80 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Widget _buildOptionButton(String option) {
-    // Removed green/red colors for correct/wrong answers
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        style: ButtonStyle(
+          minimumSize: MaterialStateProperty.all(const Size.fromHeight(48)),
+          shape: MaterialStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          backgroundColor: MaterialStateProperty.resolveWith<Color?>(
+            (states) {
+              if (answered) {
+                String correctAnswer;
+                switch (currentQuestionType) {
+                  case QuestionType.atomicNumberToName:
+                  case QuestionType.symbolToName:
+                    correctAnswer = currentElement.name;
+                    break;
+                  case QuestionType.atomicNumberToSymbol:
+                  case QuestionType.nameToSymbol:
+                    correctAnswer = currentElement.symbol;
+                    break;
+                  case QuestionType.symbolToAtomicNumber:
+                  case QuestionType.nameToAtomicNumber:
+                    correctAnswer = currentElement.atomicNumber.toString();
+                    break;
+                }
+                if (option == correctAnswer) {
+                  return Colors.green;
+                } else if (option != correctAnswer) {
+                  return Colors.red;
+                }
+              }
+              return null;
+            },
+          ),
         ),
         onPressed: answered ? null : () => _handleAnswer(option),
         child: Text(option, style: const TextStyle(fontSize: 18)),
       ),
     );
+  }
+
+  String _buildQuestionText() {
+    switch (currentQuestionType) {
+      case QuestionType.atomicNumberToName:
+        return 'What is the name of the element with atomic number ${currentElement.atomicNumber}?';
+      case QuestionType.atomicNumberToSymbol:
+        return 'What is the symbol of the element with atomic number ${currentElement.atomicNumber}?';
+      case QuestionType.symbolToName:
+        return 'What is the name of the element with symbol "${currentElement.symbol}"?';
+      case QuestionType.nameToSymbol:
+        return 'What is the symbol of the element named "${currentElement.name}"?';
+      case QuestionType.symbolToAtomicNumber:
+        return 'What is the atomic number of the element with symbol "${currentElement.symbol}"?';
+      case QuestionType.nameToAtomicNumber:
+        return 'What is the atomic number of the element named "${currentElement.name}"?';
+    }
+  }
+
+  String _questionTypeLabel() {
+    switch (currentQuestionType) {
+      case QuestionType.atomicNumberToName:
+        return "Identify by Atomic Number → Name";
+      case QuestionType.atomicNumberToSymbol:
+        return "Identify by Atomic Number → Symbol";
+      case QuestionType.symbolToName:
+        return "Identify by Symbol → Name";
+      case QuestionType.nameToSymbol:
+        return "Identify by Name → Symbol";
+      case QuestionType.symbolToAtomicNumber:
+        return "Identify by Symbol → Atomic Number";
+      case QuestionType.nameToAtomicNumber:
+        return "Identify by Name → Atomic Number";
+    }
   }
 
   @override
@@ -393,21 +659,17 @@ class _QuizScreenState extends State<QuizScreen> {
                 color: Colors.indigo,
                 backgroundColor: Colors.indigo.shade100,
               ),
-              const SizedBox(height: 24),
-              Text(
-                'What is the name of the element with:',
-                style: Theme.of(context).textTheme.headlineMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Atomic Number: ${currentElement.atomicNumber}',
-                style: Theme.of(context).textTheme.headlineLarge,
-              ),
               const SizedBox(height: 8),
               Text(
-                'Symbol: ${currentElement.symbol}',
+                _questionTypeLabel(),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _buildQuestionText(),
                 style: Theme.of(context).textTheme.headlineMedium,
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               ...options.map(_buildOptionButton),
@@ -441,18 +703,6 @@ class ResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double percent = (score / total) * 100;
-    String message;
-    if (percent == 100) {
-      message = "Excellent! You're a periodic table expert!";
-    } else if (percent >= 70) {
-      message = "Great job! You know the elements well.";
-    } else if (percent >= 40) {
-      message = "Not bad! Keep practicing.";
-    } else {
-      message = "Keep learning! The periodic table is fun!";
-    }
-
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Scaffold(
@@ -469,40 +719,36 @@ class ResultScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  '$score out of $total',
-                  style: Theme.of(context).textTheme.headlineSmall!.copyWith(color: Colors.indigo),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  message,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                  textAlign: TextAlign.center,
+                  '$score / $total',
+                  style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Colors.indigo),
                 ),
                 const SizedBox(height: 40),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.restart_alt),
-                  label: const Text('Play Again', style: TextStyle(fontSize: 18)),
+                  label: const Text('Play Again'),
                   style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
                   onPressed: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (_) => const QuizScreen()),
+                      MaterialPageRoute(builder: (_) => const MenuScreen()),
                     );
                   },
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.home),
-                  label: const Text('Back to Menu', style: TextStyle(fontSize: 18)),
+                  icon: const Icon(Icons.table_chart),
+                  label: const Text('View Periodic Table'),
                   style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
                   onPressed: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (_) => const MenuScreen()),
+                      MaterialPageRoute(builder: (_) => const PeriodicTableScreen()),
                     );
                   },
                 ),
@@ -525,41 +771,56 @@ class PeriodicTableScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(title: const Text('Periodic Table')),
         body: GridView.builder(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(8),
+          itemCount: elements.length,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 9,
             mainAxisSpacing: 6,
             crossAxisSpacing: 6,
-            childAspectRatio: 1.2,
+            childAspectRatio: 1.1,
           ),
-          itemCount: elements.length,
           itemBuilder: (context, index) {
             final element = elements[index];
-            return Container(
-              decoration: BoxDecoration(
+            return Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              child: InkWell(
                 borderRadius: BorderRadius.circular(8),
-                color: Colors.indigo.shade100,
-                border: Border.all(color: Colors.indigo),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    element.atomicNumber.toString(),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: Text('${element.name} (${element.symbol})'),
+                      content: Text('Atomic Number: ${element.atomicNumber}'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Close'),
+                        )
+                      ],
+                    ),
+                  );
+                },
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        element.atomicNumber.toString(),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        element.symbol,
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.indigo),
+                      ),
+                      Text(
+                        element.name,
+                        style: const TextStyle(fontSize: 10),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    element.symbol,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    element.name,
-                    style: const TextStyle(fontSize: 10),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                ),
               ),
             );
           },
