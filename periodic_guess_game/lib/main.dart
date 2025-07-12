@@ -60,8 +60,7 @@ void animatedNavigation(BuildContext context, Widget target,
             child: child,
           );
         case TransitionType.fade:
-        default:
-          return FadeTransition(
+        return FadeTransition(
             opacity: animation,
             child: child,
           );
@@ -539,6 +538,7 @@ class _QuizScreenState extends State<QuizScreen> {
     setState(() {});
 
     Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
       currentQuestionIndex++;
       if (currentQuestionIndex < totalQuestions) {
         _loadNewQuestion();
@@ -569,11 +569,11 @@ class _QuizScreenState extends State<QuizScreen> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: ElevatedButton(
         style: ButtonStyle(
-          minimumSize: MaterialStateProperty.all(const Size.fromHeight(48)),
-          shape: MaterialStateProperty.all(
+          minimumSize: WidgetStateProperty.all(const Size.fromHeight(48)),
+          shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          backgroundColor: MaterialStateProperty.resolveWith<Color?>(
+          backgroundColor: WidgetStateProperty.resolveWith<Color?>(
             (states) {
               if (answered) {
                 String correctAnswer;
